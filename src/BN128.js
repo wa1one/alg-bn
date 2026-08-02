@@ -22,8 +22,8 @@ class BN128Fp {
      */
     toAffine() {
         if (this.isZero()) {
-            zero = BN128Fp.ZERO
-            return new BN128(zero.x, Field._1, zero.z) // (0; 1; 0)
+            const zero = BN128Fp.ZERO
+            return new BN128Fp(zero.x, Field._1, zero.z) // (0; 1; 0)
         }
 
         const zInv = this.z.inverse()
@@ -190,7 +190,7 @@ class BN128Fp {
 
         // check for point at infinity
         if (x.isZero() && y.isZero()) {
-            return BN128.ZERO
+            return BN128Fp.ZERO
         }
 
         const p = new BN128Fp(x, y, Field._1)
@@ -200,16 +200,6 @@ class BN128Fp {
             return p
         }
         return null
-    }
-
-    toString() {
-        return (
-            this.x.toString() +
-            ' ' +
-            this.y.toString() +
-            ' ' +
-            this.z.toString()
-        )
     }
 }
 
@@ -248,7 +238,7 @@ class BN128Fp2 {
      */
     toAffine() {
         if (this.isZero()) {
-            zero = zero()
+            const zero = BN128Fp2.ZERO
             return new BN128Fp2(zero.x, Fp2._1, zero.z) // (0; 1; 0)
         }
 

@@ -1,4 +1,4 @@
-const { BN128Fp, BN128Fp2, Curve, Curve2, Point, Point2 } = require('./src')
+const { BN128Fp, BN128Fp2 } = require('./src')
 
 describe('Curves', function () {
     test('Curve point test', function () {

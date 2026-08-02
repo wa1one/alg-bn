@@ -20,63 +20,7 @@ class Point {
                 this.y = y
                 this.inf = false
             }
-            if (typeof x === 'bigint') {
-                const yBit = y
-                this.E = E
-                const p = E.bn.p
-                this.x = ExNumber.mod(x, p)
-                if (x.signum() === 0)
-                    throw new Error(
-                        'The given point does not belong to the given elliptic curve'
-                    )
-
-                this.y = E.bn.sqrt(
-                    ExNumber(x.multiply(x).multiply(x).add(E.b)).mod(p)
-                )
-                if (this.y === null)
-                    throw new Error(
-                        'The given point does not belong to the given elliptic curve'
-                    )
-                if (this.y.testBit(0) !== ((yBit & 1) === 1))
-                    this.y = p.subtract(y)
-            }
-            if (typeof y === 'bigint') {
-                const xTrit = x
-                this.E = E
-                const p = E.bn.p
-                this.y = y.mod(p)
-                if (y.signum() === 0)
-                    throw new Error(
-                        'The given point does not belong to the given elliptic curve'
-                    )
-                else {
-                    this.x = E.bn.cbrt(y.multiply(y).subtract(E.b).mod(p))
-                    if (this.x === null)
-                        throw new Error(
-                            'The given point does not belong to the given elliptic curve'
-                        )
-
-                    if (this.x.mod(E.bn._3) !== xTrit) {
-                        const zeta = E.bn.zeta
-                        this.x = zeta.multiply(x).mod(p)
-                        if (this.x.mod(E.bn._3) !== xTrit) {
-                            this.x = zeta.multiply(x).mod(p)
-                            if (this.x.mod(E.bn._3) !== xTrit)
-                                throw new Error(
-                                    'The given point does not belong to the given elliptic curve'
-                                )
-                        }
-                    }
-                }
-            }
         }
-
-        /*if (typeof this.x === 'bigint') {
-            this.x = new Field2(E.bn.p, this.x)
-        }
-        if (typeof this.y === 'bigint') {
-            this.y = new Field2(E.bn.p, this.y)
-        }*/
     }
 
     zero = () => this.inf
@@ -135,7 +79,7 @@ class Point {
 
     twice(n) {
         if (this.zero()) return this
-        const P = new Point(this.E, this.x, this.y)
+        let P = new Point(this.E, this.x, this.y)
 
         for (let i = 0; i < n; i++) {
             P = P.double()
@@ -239,7 +183,7 @@ class Point2 extends Point {
 
     twice(n) {
         if (this.zero()) return this
-        const P = new Point2(this.E, this.x, this.y)
+        let P = new Point2(this.E, this.x, this.y)
 
         for (let i = 0; i < n; i++) {
             P = P.double()
@@ -279,15 +223,6 @@ class Point2 extends Point {
         const xcoeffs = xre.subtract(xim.multiply(9))
         const ycoeffs = yre.subtract(yim.multiply(9))
 
-        const w = new Field12(this.E.bn, [
-            new Field2(this.E.bn.p, 0, bigInt.one, false),
-            new Field2(this.E.bn.p, 0, 0, false),
-            new Field2(this.E.bn.p, 0, 0, false),
-            new Field2(this.E.bn.p, 0, 0, false),
-            new Field2(this.E.bn.p, 0, 0, false),
-            new Field2(this.E.bn.p, 0, 0, false),
-        ])
-
         const nx = new Field12(this.E.bn, [
             new Field2(this.E.bn.p, xcoeffs.re, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
@@ -306,9 +241,6 @@ class Point2 extends Point {
             new Field2(this.E.bn.p, 0, 0, false),
         ])
 
-        nx = nx.multiply(w).multiply(w)
-        ny = ny.multiply(w).multiply(w).multiply(w)
-
         return new Point12(this.E, nx, ny)
     }
 
@@ -322,6 +254,7 @@ class Point12 extends Point2 {
         super(E, x, y)
 
         if (arguments.length === 1) {
+            const { Curve2 } = require('./Curves')
             if (E instanceof Curve2) {
                 this.E = E
                 this.x = E.Fp12_1
@@ -372,7 +305,7 @@ class Point12 extends Point2 {
 
     twice(n) {
         if (this.zero()) return this
-        const P = new Point12(this.E, this.x, this.y)
+        let P = new Point12(this.E, this.x, this.y)
 
         for (let i = 0; i < n; i++) {
             P = P.double()
