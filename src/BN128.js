@@ -1,4 +1,4 @@
-const { Field, Fp2 } = require('alg-field')
+const { Field, Fp2 } = require('@wa1one/alg-field')
 
 class BN128Fp {
     constructor(x, y, z) {
@@ -9,7 +9,8 @@ class BN128Fp {
         }
     }
 
-    static n = 21888242871839275222246405745257275088548364400416034343698204186575808495617n
+    static n =
+        21888242871839275222246405745257275088548364400416034343698204186575808495617n
 
     static ZERO = new BN128Fp(Field._0, Field._0, Field._0)
     static B = new Field(3n)
@@ -155,9 +156,9 @@ class BN128Fp {
     isValid() {
         // check whether coordinates belongs to the Field
         if (
-            !this.x instanceof Field ||
-            !this.y instanceof Field ||
-            !this.z instanceof Field
+            (!this.x) instanceof Field ||
+            (!this.y) instanceof Field ||
+            (!this.z) instanceof Field
         ) {
             return false
         }
@@ -221,7 +222,8 @@ class BN128Fp2 {
         }
     }
 
-    static n = 21888242871839275222246405745257275088548364400416034343698204186575808495617n
+    static n =
+        21888242871839275222246405745257275088548364400416034343698204186575808495617n
 
     static TWIST_MUL_BY_P_X = new Fp2(
         21575463638280843010398324269430826099269044274347216827212613867836435027261n,
@@ -380,9 +382,9 @@ class BN128Fp2 {
     isValid() {
         // check whether coordinates belongs to the Field
         if (
-            !this.x instanceof Fp2 ||
-            !this.y instanceof Fp2 ||
-            !this.z instanceof Fp2
+            (!this.x) instanceof Fp2 ||
+            (!this.y) instanceof Fp2 ||
+            (!this.z) instanceof Fp2
         ) {
             return false
         }
