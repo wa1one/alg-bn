@@ -3,7 +3,15 @@ const { Field2, Field12 } = require('@wa1one/alg-field')
 class Point {
     constructor(E, x, y) {
         this.preComp = null
-        if (arguments.length === 1) {
+        if (x === undefined && y === undefined) {
+            const { Curve } = require('./Curves')
+            if (E instanceof Curve) {
+                this.E = E
+                this.x = new Field2(E.bn.p)
+                this.y = new Field2(E.bn.p)
+                this.inf = true
+            }
+
             if (E instanceof Point) {
                 const Q = E
                 this.E = Q.E
@@ -11,9 +19,7 @@ class Point {
                 this.y = Q.y
                 this.inf = Q.inf
             }
-        }
-
-        if (arguments.length === 3) {
+        } else {
             if (x instanceof Field2 && y instanceof Field2) {
                 this.E = E
                 this.x = x
@@ -63,6 +69,8 @@ class Point {
     subtract = (Q) => this.add(Q.neg())
 
     double() {
+        if (this.zero()) return this
+
         const X = this.x
         const Y = this.y
 
@@ -89,17 +97,28 @@ class Point {
     }
 
     multiply(n) {
-        if (n.isZero()) {
-            return this.E.infinity
-        }
-        if (n.equals(1)) {
-            return this
-        }
-        if (n.mod(2).isZero()) {
-            return this.double().multiply(n.divide(2))
+        if (typeof n !== 'bigint') {
+            n = BigInt(n)
         }
 
-        return this.add(this.double().multiply(n.divide(2)))
+        if (n === 0n) {
+            return this.E.infinity
+        }
+        if (this.zero()) {
+            return this
+        }
+
+        let res = this.E.infinity
+
+        for (let i = n.bitLength() - 1; i >= 0; i--) {
+            res = res.double()
+
+            if (n.testBit(i)) {
+                res = res.add(this)
+            }
+        }
+
+        return res
     }
 
     toF12() {
@@ -135,7 +154,7 @@ class Point2 extends Point {
     constructor(E, x, y) {
         super(E, x, y)
 
-        if (arguments.length === 1) {
+        if (x === undefined && y === undefined) {
             if (E instanceof Point2) {
                 const Q = E
                 this.E = Q.E
@@ -143,8 +162,7 @@ class Point2 extends Point {
                 this.y = Q.y
                 this.inf = Q.inf
             }
-        }
-        if (arguments.length === 3) {
+        } else {
             if (x instanceof Field2 && y instanceof Field2) {
                 this.E = E
                 this.x = x
@@ -193,6 +211,8 @@ class Point2 extends Point {
     }
 
     double() {
+        if (this.zero()) return this
+
         const X = this.x
         const Y = this.y
 
@@ -220,10 +240,19 @@ class Point2 extends Point {
         const xim = new Field2(this.E.bn.p, _x.im)
         const yim = new Field2(this.E.bn.p, _y.im)
 
-        const xcoeffs = xre.subtract(xim.multiply(9))
-        const ycoeffs = yre.subtract(yim.multiply(9))
+        const xcoeffs = xre.subtract(xim.multiply(9n))
+        const ycoeffs = yre.subtract(yim.multiply(9n))
 
-        const nx = new Field12(this.E.bn, [
+        const w = new Field12(this.E.bn, [
+            new Field2(this.E.bn.p, 0, BigInt(1), false),
+            new Field2(this.E.bn.p, 0, 0, false),
+            new Field2(this.E.bn.p, 0, 0, false),
+            new Field2(this.E.bn.p, 0, 0, false),
+            new Field2(this.E.bn.p, 0, 0, false),
+            new Field2(this.E.bn.p, 0, 0, false),
+        ])
+
+        let nx = new Field12(this.E.bn, [
             new Field2(this.E.bn.p, xcoeffs.re, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
@@ -232,7 +261,7 @@ class Point2 extends Point {
             new Field2(this.E.bn.p, 0, 0, false),
         ])
 
-        const ny = new Field12(this.E.bn, [
+        let ny = new Field12(this.E.bn, [
             new Field2(this.E.bn.p, ycoeffs.re, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
@@ -240,6 +269,9 @@ class Point2 extends Point {
             new Field2(this.E.bn.p, 0, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
         ])
+
+        nx = nx.multiply(w).multiply(w)
+        ny = ny.multiply(w).multiply(w).multiply(w)
 
         return new Point12(this.E, nx, ny)
     }
@@ -253,7 +285,7 @@ class Point12 extends Point2 {
     constructor(E, x, y) {
         super(E, x, y)
 
-        if (arguments.length === 1) {
+        if (x === undefined && y === undefined) {
             const { Curve2 } = require('./Curves')
             if (E instanceof Curve2) {
                 this.E = E
@@ -269,8 +301,7 @@ class Point12 extends Point2 {
                 this.y = Q.y
                 this.inf = Q.inf
             }
-        }
-        if (arguments.length === 3) {
+        } else {
             if (x instanceof Field12 && y instanceof Field12) {
                 this.E = E
                 this.x = x
@@ -315,6 +346,8 @@ class Point12 extends Point2 {
     }
 
     double() {
+        if (this.zero()) return this
+
         const X = this.x
         const Y = this.y
 

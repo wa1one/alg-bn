@@ -87,24 +87,43 @@ A point on the sextic twist curve over `Fp2`, mirroring `BN128Fp` but with
 
 ### `Curve`, `Curve2`, `Point`, `Point2`, `Point12`
 
-Exported but **not currently functional**. These build their coordinates via
-`Field2`/`Field12` from `@wa1one/alg-field`, which that package's own README
-documents as an unfinished port ("every method throws or returns a wrong
-result as shipped"). `new Curve(bn)` throws immediately, and there's
-presently no way to construct a valid `Field2`/`Field12` value to hand to
-`Point`/`Point2`/`Point12`. They're kept only for backwards compatibility of
-the export shape until `alg-field` ships working `Field2`/`Field12` classes;
-use `BN128Fp`/`BN128Fp2` above instead.
+A second, affine-coordinate point representation built on `Field2`/`Field12`
+from `@wa1one/alg-field` rather than `Field`/`Fp2`. Unlike `BN128Fp`/
+`BN128Fp2`, `.eq()` here compares canonical affine coordinates directly, so
+points computed via different code paths (e.g. `.multiply()` vs. repeated
+`.add()`) compare equal without any extra normalization step.
 
-- `Curve` — the base curve; wraps `Point` and computes `.contains(P)`.
-- `Curve2` — the twisted curve (`extends Curve`); wraps `Point2` and holds
-  the twist generator `Gt`.
-- `Point` — a point on `Curve`, with `.add()`, `.double()`, `.multiply()`,
-  `.neg()`, `.twice(n)`, `.toF12()`, `.eq()`, `.toString()`.
-- `Point2` — a point on `Curve2` (`extends Point`); validates membership via
-  `Curve2.contains()` on construction.
-- `Point12` — a point over `Fp12` (`extends Point2`), the pairing target
-  group.
+```js
+const { Curve } = require('@wa1one/alg-bn')
+const { Parameters } = require('@wa1one/alg-field')
+
+const curve = new Curve({ p: Parameters.p })
+const G = curve.G
+curve.contains(G) // true
+G.multiply(3n).eq(G.add(G.double())) // true
+```
+
+- `Curve` — the base curve `y² = x³ + 3` over `Fp`. `new Curve(bn)` takes a
+  `bn` object with at least `{ p }` (the field modulus); it exposes `.G` (the
+  generator, a `Point`), `.infinity` (the identity `Point`), and
+  `.contains(P)`.
+- `Curve2` — the sextic twist curve (`extends Curve`). `new Curve2(E)` takes
+  a base `Curve` instance; `E.bn` additionally needs `Fp2_0`, `Fp2_1`, `Fp2_i`
+  (`Field2` instances), and `m` (set `m: 256` to use the hardcoded BN254
+  twist generator — the only path this package exercises, since the generic
+  fallback calls `Field2.sqrt()`, which has an unrelated bug in
+  `@wa1one/alg-field`'s current release). Exposes `.Gt` (the twist
+  generator, a `Point2`) and `.Fp12_1` (the `Field12` multiplicative
+  identity, used to build the `Point12` identity).
+- `Point` — a point on `Curve`, in affine `(x, y)` `Field2` coordinates.
+  `.add()`, `.double()`, `.multiply(n)` (accepts a `bigint` or coercible
+  value), `.neg()`, `.twice(n)`, `.toF12()` (embeds into the `Point12`
+  pairing target group), `.eq()`, `.toString()`.
+- `Point2` — a point on `Curve2` (`extends Point`); the 3-argument
+  constructor validates curve membership via `Curve2.contains()` and throws
+  `pointNotOnCurve` otherwise.
+- `Point12` — a point over `Fp12` (`extends Point2`), in `Field12`
+  coordinates.
 
 ## Development
 

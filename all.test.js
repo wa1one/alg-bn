@@ -1,6 +1,18 @@
 const { BN128Fp, BN128Fp2 } = require('./src')
 const { Curve, Curve2 } = require('./src/Curves')
-const { Field, Fp2, Field2, Field12 } = require('@wa1one/alg-field')
+const { Point, Point2, Point12 } = require('./src/Points')
+const { Field, Fp2, Field2, Parameters } = require('@wa1one/alg-field')
+
+// Curve2 needs a few curve-parameter fields (Fp2_0/Fp2_1/Fp2_i, and m to pick the
+// BN254 twist branch) that @wa1one/alg-field's Parameters doesn't provide on its own.
+const BN = {
+    p: Parameters.p,
+    n: Parameters.n,
+    Fp2_0: new Field2(Parameters.p),
+    Fp2_1: new Field2(Parameters.p, 1n),
+    Fp2_i: new Field2(Parameters.p, 0n, 1n, false),
+    m: 256,
+}
 
 const G2_COORDS = [
     10857046999023057135944570762232829481370756359578518086990519993285655852781n,
@@ -174,26 +186,142 @@ describe('BN128Fp2', () => {
     })
 })
 
-// Curve, Curve2, Point, Point2 and Point12 all build coordinates via Field2/Field12
-// from @wa1one/alg-field. That package's own README documents those two classes as
-// unfinished and non-functional ("every method throws or returns a wrong result"),
-// so none of the five classes below can currently be used for real elliptic-curve
-// arithmetic. These tests pin down that broken state so they fail loudly (telling us
-// to fill in real coverage) once alg-field ships working Field2/Field12 classes.
-describe('Curve, Curve2, Point, Point2, Point12 (blocked by @wa1one/alg-field Field2/Field12)', () => {
-    const p =
-        21888242871839275222246405745257275088548364400416034343698204186575808495617n
+describe('Curve / Point', () => {
+    const curve = new Curve(BN)
+    const G = curve.G
 
-    test('Field2 cannot be constructed, so Curve cannot build its coefficients', () => {
-        expect(() => new Field2(p, 3n)).toThrow()
-        expect(() => new Curve({ p })).toThrow()
+    test('G is on the curve and the curve exposes the point at infinity', () => {
+        expect(curve.contains(G)).toBeTruthy()
+        expect(curve.infinity.zero()).toBeTruthy()
+        expect(curve.infinity.double().zero()).toBeTruthy()
     })
 
-    test('Curve2 fails for the same reason, via its Curve super constructor', () => {
-        expect(() => new Curve2({ bn: { p } })).toThrow()
+    test('double() matches self-addition', () => {
+        expect(G.double().eq(G.add(G))).toBeTruthy()
+        expect(G.double().eq(G)).toBeFalsy()
     })
 
-    test('Field12 cannot be constructed either, blocking Point12 coordinates', () => {
-        expect(() => new Field12({ p }, [1n, 2n, 3n, 4n, 5n, 6n])).toThrow()
+    test('add() treats the point at infinity as the identity', () => {
+        expect(G.add(curve.infinity).eq(G)).toBeTruthy()
+        expect(curve.infinity.add(G).eq(G)).toBeTruthy()
+    })
+
+    test('multiply() matches repeated addition', () => {
+        expect(G.multiply(0n).zero()).toBeTruthy()
+        expect(G.multiply(1n).eq(G)).toBeTruthy()
+        expect(G.multiply(2n).eq(G.double())).toBeTruthy()
+        expect(G.multiply(3n).eq(G.add(G.double()))).toBeTruthy()
+    })
+
+    test('neg() produces the additive inverse', () => {
+        expect(G.add(G.neg()).zero()).toBeTruthy()
+    })
+
+    test('twice(n) doubles n times', () => {
+        expect(G.twice(2).eq(G.multiply(4n))).toBeTruthy()
+        expect(curve.infinity.twice(3).zero()).toBeTruthy()
+    })
+
+    test('contains() rejects a point built with off-curve coordinates', () => {
+        const offCurve = new Point(
+            curve,
+            new Field2(BN.p, 1n),
+            new Field2(BN.p, 1n)
+        )
+        expect(curve.contains(offCurve)).toBeFalsy()
+    })
+
+    test('eq() rejects points from a different curve and non-Point values', () => {
+        const otherCurve = new Curve({ ...BN })
+        expect(G.eq(otherCurve.G)).toBeFalsy()
+        expect(G.eq(null)).toBeFalsy()
+        expect(G.eq({})).toBeFalsy()
+    })
+
+    test('toString() renders affine coordinates', () => {
+        expect(G.toString()).toBe('([1,0],[2,0])')
+    })
+
+    test('toF12() embeds the point into the Fp12 pairing target group', () => {
+        const G12 = G.toF12()
+        expect(G12).toBeInstanceOf(Point12)
+        expect(G12.add(G12).eq(G12.double())).toBeTruthy()
+
+        const infinity12 = curve.infinity.toF12()
+        expect(infinity12).toBe(curve.infinity)
+    })
+})
+
+describe('Curve2 / Point2', () => {
+    const curve = new Curve(BN)
+    const curve2 = new Curve2(curve)
+    const Gt = curve2.Gt
+
+    test('Gt is on the twisted curve and the curve exposes the point at infinity', () => {
+        expect(curve2.contains(Gt)).toBeTruthy()
+        expect(curve2.infinity.zero()).toBeTruthy()
+    })
+
+    test('double() matches self-addition', () => {
+        expect(Gt.double().eq(Gt.add(Gt))).toBeTruthy()
+        expect(Gt.double().eq(Gt)).toBeFalsy()
+    })
+
+    test('add() treats the point at infinity as the identity', () => {
+        expect(Gt.add(curve2.infinity).eq(Gt)).toBeTruthy()
+        expect(curve2.infinity.add(Gt).eq(Gt)).toBeTruthy()
+    })
+
+    test('multiply() matches repeated addition', () => {
+        expect(Gt.multiply(0n).zero()).toBeTruthy()
+        expect(Gt.multiply(2n).eq(Gt.double())).toBeTruthy()
+        expect(Gt.multiply(3n).eq(Gt.add(Gt.double()))).toBeTruthy()
+    })
+
+    test('neg() produces the additive inverse', () => {
+        expect(Gt.add(Gt.neg()).zero()).toBeTruthy()
+    })
+
+    test('constructing a point not on the twisted curve throws', () => {
+        expect(
+            () => new Point2(curve2, new Field2(BN.p, 1n), new Field2(BN.p, 1n))
+        ).toThrow('pointNotOnCurve')
+    })
+
+    test('toF12() embeds the point into the Fp12 pairing target group', () => {
+        const Gt12 = Gt.toF12()
+        expect(Gt12).toBeInstanceOf(Point12)
+        expect(curve2.contains(Gt12)).toBeTruthy()
+    })
+})
+
+describe('Point12', () => {
+    const curve = new Curve(BN)
+    const curve2 = new Curve2(curve)
+    const G12 = curve.G.toF12()
+
+    test('the curve2-based 1-argument constructor builds the Fp12 identity', () => {
+        const identity = new Point12(curve2)
+        expect(identity.inf).toBeTruthy()
+        expect(identity.x.eq(curve2.Fp12_1)).toBeTruthy()
+        expect(identity.zero()).toBeTruthy()
+    })
+
+    test('double() matches self-addition', () => {
+        expect(G12.double().eq(G12.add(G12))).toBeTruthy()
+    })
+
+    test('multiply() matches repeated addition', () => {
+        expect(G12.multiply(2n).eq(G12.double())).toBeTruthy()
+        expect(G12.multiply(3n).eq(G12.add(G12.double()))).toBeTruthy()
+    })
+
+    test('twice(n) doubles n times', () => {
+        expect(G12.twice(2).eq(G12.multiply(4n))).toBeTruthy()
+    })
+
+    test('toString() renders affine Fp12 coordinates', () => {
+        expect(G12.toString().startsWith('(')).toBeTruthy()
+        expect(G12.toString()).toContain(', ')
     })
 })

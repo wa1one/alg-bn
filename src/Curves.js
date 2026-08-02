@@ -34,7 +34,7 @@ class Curve {
                 new Field2(this.bn.p, 0, 0, false),
                 new Field2(this.bn.p, 0, 0, false),
             ])
-            return y.square().eq(x.multiply(x).multiply(x).add(b))
+            return y.multiply(y).eq(x.multiply(x).multiply(x).add(b))
         }
 
         return y.square().eq(x.multiply(x).multiply(x).add(this.b))
@@ -50,6 +50,7 @@ class Curve2 extends Curve {
             this.Fp2_0 = E.bn.Fp2_0
             this.Fp2_1 = E.bn.Fp2_1
             this.Fp2_i = E.bn.Fp2_i
+            this.Fp12_1 = new Field12(E.bn, 1n)
             this.infinity = new Point2(this)
 
             this.b = new Field2(E.bn.p, 3).mulV()
@@ -58,9 +59,6 @@ class Curve2 extends Curve {
                 this.b = new Field2(E.bn.p, 3n).divide(
                     new Field2(E.bn.p, 9n, 1n, false)
                 )
-
-            this.xt = new Field2(E.bn.p, 1n, 0n, false)
-            this.yt = this.xt.cube().add(this.b).sqrt()
 
             if (E.bn.m == 256) {
                 this.xt = new Field2(
@@ -75,6 +73,9 @@ class Curve2 extends Curve {
                     4082367875863433681332203403145435568316851327593401208105741076214120093531n,
                     false
                 )
+            } else {
+                this.xt = new Field2(E.bn.p, 1n, 0n, false)
+                this.yt = this.xt.cube().add(this.b).sqrt()
             }
 
             this.Gt = new Point2(this, this.xt, this.yt)
