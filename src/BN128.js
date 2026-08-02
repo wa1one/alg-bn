@@ -156,9 +156,9 @@ class BN128Fp {
     isValid() {
         // check whether coordinates belongs to the Field
         if (
-            (!this.x) instanceof Field ||
-            (!this.y) instanceof Field ||
-            (!this.z) instanceof Field
+            !(this.x instanceof Field) ||
+            !(this.y instanceof Field) ||
+            !(this.z instanceof Field)
         ) {
             return false
         }
@@ -372,9 +372,9 @@ class BN128Fp2 {
     isValid() {
         // check whether coordinates belongs to the Field
         if (
-            (!this.x) instanceof Fp2 ||
-            (!this.y) instanceof Fp2 ||
-            (!this.z) instanceof Fp2
+            !(this.x instanceof Fp2) ||
+            !(this.y instanceof Fp2) ||
+            !(this.z instanceof Fp2)
         ) {
             return false
         }

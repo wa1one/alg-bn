@@ -31,6 +31,10 @@ describe('BN128Fp', () => {
         expect(invalid.isOnCurve()).toBeFalsy()
     })
 
+    test('isValid() rejects a point built with non-Field coordinates', () => {
+        expect(new BN128Fp(1n, 2n, 1n).isValid()).toBeFalsy()
+    })
+
     test('isZero()', () => {
         expect(BN128Fp.ZERO.isZero()).toBeTruthy()
         expect(G.isZero()).toBeFalsy()
@@ -104,6 +108,10 @@ describe('BN128Fp2', () => {
 
     test('create() returns null for coordinates not on the curve', () => {
         expect(BN128Fp2.create(1n, 2n, 3n, 4n)).toBeNull()
+    })
+
+    test('isValid() rejects a point built with non-Fp2 coordinates', () => {
+        expect(new BN128Fp2(1n, 2n, 1n).isValid()).toBeFalsy()
     })
 
     test('isZero()', () => {
