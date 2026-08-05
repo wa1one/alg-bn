@@ -1,21 +1,21 @@
 # alg-bn
 
 Baretto-Naehrig (BN) curve arithmetic, defaulting to the alt_bn128 (BN254) curve
-used by Ethereum precompiles. Built on top of [`@wa1one/alg-field`](https://www.npmjs.com/package/@wa1one/alg-field).
+used by Ethereum precompiles. Built on top of [`alg-field`](https://www.npmjs.com/package/alg-field).
 
-- **Current (scoped) package:** https://www.npmjs.com/package/@wa1one/alg-bn
-- **Legacy package** (`alg-bn`, unscoped, no longer maintained under this account): https://www.npmjs.com/package/alg-bn
+- **Package:** https://www.npmjs.com/package/alg-bn
+- **Scoped mirror:** https://www.npmjs.com/package/@wa1one/alg-bn
 
 ## Install
 
 ```
-npm install @wa1one/alg-bn
+npm install alg-bn
 ```
 
 ## Usage
 
 ```js
-const { BN128Fp, BN128Fp2 } = require('@wa1one/alg-bn')
+const { BN128Fp, BN128Fp2 } = require('alg-bn')
 
 const G = BN128Fp.create(1n, 2n)
 G.double().eq(G.add(G)) // true
@@ -30,7 +30,7 @@ A point on the base curve `y² = x³ + 3` over `Fp`, held in Jacobian
 coordinates `(x, y, z)`.
 
 - `new BN128Fp(x, y, z)` — `x`/`y`/`z` must be `Field` instances (from
-  `@wa1one/alg-field`); otherwise the point is left uninitialized.
+  `alg-field`); otherwise the point is left uninitialized.
 - `static n` — the curve order (`bigint`).
 - `static B` — the curve coefficient, `Field(3n)`.
 - `static ZERO` — the point at infinity, `(0, 0, 0)`.
@@ -88,14 +88,14 @@ A point on the sextic twist curve over `Fp2`, mirroring `BN128Fp` but with
 ### `Curve`, `Curve2`, `Point`, `Point2`, `Point12`
 
 A second, affine-coordinate point representation built on `Field2`/`Field12`
-from `@wa1one/alg-field` rather than `Field`/`Fp2`. Unlike `BN128Fp`/
+from `alg-field` rather than `Field`/`Fp2`. Unlike `BN128Fp`/
 `BN128Fp2`, `.eq()` here compares canonical affine coordinates directly, so
 points computed via different code paths (e.g. `.multiply()` vs. repeated
 `.add()`) compare equal without any extra normalization step.
 
 ```js
-const { Curve } = require('@wa1one/alg-bn')
-const { Parameters } = require('@wa1one/alg-field')
+const { Curve } = require('alg-bn')
+const { Parameters } = require('alg-field')
 
 const curve = new Curve({ p: Parameters.p })
 const G = curve.G
@@ -112,7 +112,7 @@ G.multiply(3n).eq(G.add(G.double())) // true
   (`Field2` instances), and `m` (set `m: 256` to use the hardcoded BN254
   twist generator — the only path this package exercises, since the generic
   fallback calls `Field2.sqrt()`, which has an unrelated bug in
-  `@wa1one/alg-field`'s current release). Exposes `.Gt` (the twist
+  `alg-field`'s current release). Exposes `.Gt` (the twist
   generator, a `Point2`) and `.Fp12_1` (the `Field12` multiplicative
   identity, used to build the `Point12` identity).
 - `Point` — a point on `Curve`, in affine `(x, y)` `Field2` coordinates.

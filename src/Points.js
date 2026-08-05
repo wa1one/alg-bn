@@ -1,4 +1,4 @@
-const { Field2, Field12 } = require('@wa1one/alg-field')
+const { Field2, Field12 } = require('alg-field')
 
 class Point {
     constructor(E, x, y) {

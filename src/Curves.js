@@ -1,5 +1,5 @@
 const bigintCryptoUtils = require('bigint-crypto-utils')
-const { Field2, Field12 } = require('@wa1one/alg-field')
+const { Field2, Field12 } = require('alg-field')
 
 const { Point, Point2 } = require('./Points')
 

@@ -1,10 +1,10 @@
 const { BN128Fp, BN128Fp2 } = require('./src')
 const { Curve, Curve2 } = require('./src/Curves')
 const { Point, Point2, Point12 } = require('./src/Points')
-const { Field, Fp2, Field2, Parameters } = require('@wa1one/alg-field')
+const { Field, Fp2, Field2, Parameters } = require('alg-field')
 
 // Curve2 needs a few curve-parameter fields (Fp2_0/Fp2_1/Fp2_i, and m to pick the
-// BN254 twist branch) that @wa1one/alg-field's Parameters doesn't provide on its own.
+// BN254 twist branch) that alg-field's Parameters doesn't provide on its own.
 const BN = {
     p: Parameters.p,
     n: Parameters.n,

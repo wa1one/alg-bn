@@ -1,6 +1,6 @@
 {
-    "name": "@wa1one/alg-bn",
-    "version": "0.2.0",
+    "name": "alg-bn",
+    "version": "0.1.10",
     "description": "",
     "main": "dist/index.js",
     "publishConfig": {
@@ -32,7 +32,7 @@
     },
     "homepage": "https://github.com/wa1one/alg-bn#readme",
     "dependencies": {
-        "@wa1one/alg-field": "^0.2.0",
+        "alg-field": "^0.1.10",
         "bigint-crypto-utils": "^3.0.8"
     },
     "devDependencies": {
