@@ -32,7 +32,7 @@
     },
     "homepage": "https://github.com/wa1one/alg-bn#readme",
     "dependencies": {
-        "alg-field": "^0.1.10",
+        "alg-field": "^0.2.3",
         "bigint-crypto-utils": "^3.0.8"
     },
     "devDependencies": {
