@@ -1,18 +1,8 @@
 const { BN128Fp, BN128Fp2 } = require('./src')
 const { Curve, Curve2 } = require('./src/Curves')
 const { Point, Point2, Point12 } = require('./src/Points')
-const { Field, Fp2, Field2, Parameters } = require('alg-field')
-
-// Curve2 needs a few curve-parameter fields (Fp2_0/Fp2_1/Fp2_i, and m to pick the
-// BN254 twist branch) that alg-field's Parameters doesn't provide on its own.
-const BN = {
-    p: Parameters.p,
-    n: Parameters.n,
-    Fp2_0: new Field2(Parameters.p),
-    Fp2_1: new Field2(Parameters.p, 1n),
-    Fp2_i: new Field2(Parameters.p, 0n, 1n, false),
-    m: 256,
-}
+const { Bn254Parameters, Bls12381Parameters } = require('./src/curveParameters')
+const { Field, Fp2 } = require('alg-field')
 
 const G2_COORDS = [
     10857046999023057135944570762232829481370756359578518086990519993285655852781n,
@@ -187,7 +177,7 @@ describe('BN128Fp2', () => {
 })
 
 describe('Curve / Point', () => {
-    const curve = new Curve(BN)
+    const curve = new Curve()
     const G = curve.G
 
     test('G is on the curve and the curve exposes the point at infinity', () => {
@@ -225,21 +215,21 @@ describe('Curve / Point', () => {
     test('contains() rejects a point built with off-curve coordinates', () => {
         const offCurve = new Point(
             curve,
-            new Field2(BN.p, 1n),
-            new Field2(BN.p, 1n)
+            new Fp2(1n, 0n, Bn254Parameters.fp2Params),
+            new Fp2(1n, 0n, Bn254Parameters.fp2Params)
         )
         expect(curve.contains(offCurve)).toBeFalsy()
     })
 
     test('eq() rejects points from a different curve and non-Point values', () => {
-        const otherCurve = new Curve({ ...BN })
+        const otherCurve = new Curve({ ...Bn254Parameters })
         expect(G.eq(otherCurve.G)).toBeFalsy()
         expect(G.eq(null)).toBeFalsy()
         expect(G.eq({})).toBeFalsy()
     })
 
     test('toString() renders affine coordinates', () => {
-        expect(G.toString()).toBe('([1,0],[2,0])')
+        expect(G.toString()).toBe('(1, 0,2, 0)')
     })
 
     test('toF12() embeds the point into the Fp12 pairing target group', () => {
@@ -253,7 +243,7 @@ describe('Curve / Point', () => {
 })
 
 describe('Curve2 / Point2', () => {
-    const curve = new Curve(BN)
+    const curve = new Curve()
     const curve2 = new Curve2(curve)
     const Gt = curve2.Gt
 
@@ -284,7 +274,12 @@ describe('Curve2 / Point2', () => {
 
     test('constructing a point not on the twisted curve throws', () => {
         expect(
-            () => new Point2(curve2, new Field2(BN.p, 1n), new Field2(BN.p, 1n))
+            () =>
+                new Point2(
+                    curve2,
+                    new Fp2(1n, 0n, Bn254Parameters.fp2Params),
+                    new Fp2(1n, 0n, Bn254Parameters.fp2Params)
+                )
         ).toThrow('pointNotOnCurve')
     })
 
@@ -296,7 +291,7 @@ describe('Curve2 / Point2', () => {
 })
 
 describe('Point12', () => {
-    const curve = new Curve(BN)
+    const curve = new Curve()
     const curve2 = new Curve2(curve)
     const G12 = curve.G.toF12()
 
@@ -323,5 +318,50 @@ describe('Point12', () => {
     test('toString() renders affine Fp12 coordinates', () => {
         expect(G12.toString().startsWith('(')).toBeTruthy()
         expect(G12.toString()).toContain(', ')
+    })
+})
+
+// BLS12-381's G1/G2 generator, b coefficient, and subgroup order in Bls12381Parameters are
+// published constants recalled from memory rather than read from a source, so the strongest
+// checks here are the ones that would catch a wrong digit rather than just "didn't throw":
+// multiplying each generator by its claimed subgroup order must return the point at infinity.
+describe('BLS12-381', () => {
+    const curve = new Curve(Bls12381Parameters)
+    const curve2 = new Curve2(curve)
+    const G = curve.G
+    const Gt = curve2.Gt
+
+    test('generators are on their respective curves and have the claimed subgroup order', () => {
+        expect(curve.contains(G)).toBeTruthy()
+        expect(G.multiply(Bls12381Parameters.n).zero()).toBeTruthy()
+
+        expect(curve2.contains(Gt)).toBeTruthy()
+        expect(Gt.multiply(Bls12381Parameters.n).zero()).toBeTruthy()
+    })
+
+    test('G1 double() matches self-addition and multiply() matches repeated addition', () => {
+        expect(G.double().eq(G.add(G))).toBeTruthy()
+        expect(G.multiply(2n).eq(G.double())).toBeTruthy()
+        expect(G.multiply(3n).eq(G.add(G.double()))).toBeTruthy()
+    })
+
+    test('G2 double() matches self-addition and multiply() matches repeated addition', () => {
+        expect(Gt.double().eq(Gt.add(Gt))).toBeTruthy()
+        expect(Gt.multiply(2n).eq(Gt.double())).toBeTruthy()
+        expect(Gt.multiply(3n).eq(Gt.add(Gt.double()))).toBeTruthy()
+    })
+
+    test('add() treats the point at infinity as the identity', () => {
+        expect(G.add(curve.infinity).eq(G)).toBeTruthy()
+        expect(Gt.add(curve2.infinity).eq(Gt)).toBeTruthy()
+    })
+
+    test('toF12() refuses to run against a non-BN254 curve', () => {
+        expect(() => G.toF12()).toThrow(
+            'toF12() is only implemented for the default BN254 curve'
+        )
+        expect(() => Gt.toF12()).toThrow(
+            'toF12() is only implemented for the default BN254 curve'
+        )
     })
 })

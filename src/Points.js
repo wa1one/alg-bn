@@ -1,4 +1,5 @@
-const { Field2, Field12 } = require('alg-field')
+const { Fp2, Field2, Field12 } = require('alg-field')
+const { Bn254Parameters } = require('./curveParameters')
 
 class Point {
     constructor(E, x, y) {
@@ -7,8 +8,8 @@ class Point {
             const { Curve } = require('./Curves')
             if (E instanceof Curve) {
                 this.E = E
-                this.x = new Field2(E.bn.p)
-                this.y = new Field2(E.bn.p)
+                this.x = new Fp2(0n, 0n, E.bn.fp2Params)
+                this.y = new Fp2(0n, 0n, E.bn.fp2Params)
                 this.inf = true
             }
 
@@ -20,7 +21,7 @@ class Point {
                 this.inf = Q.inf
             }
         } else {
-            if (x instanceof Field2 && y instanceof Field2) {
+            if (x instanceof Fp2 && y instanceof Fp2) {
                 this.E = E
                 this.x = x
                 this.y = y
@@ -39,9 +40,9 @@ class Point {
     same = (Q) => this.E.bn === Q.E.bn
 
     neg = () =>
-        this.y.zero()
+        this.y.isZero()
             ? new Point(this.E, this.x, this.y)
-            : new Point(this.E, this.x, this.y.neg())
+            : new Point(this.E, this.x, this.y.negate())
 
     add(Q) {
         if (this.zero()) return Q
@@ -62,7 +63,7 @@ class Point {
         const m = Y2.subtract(Y1).divide(X2.subtract(X1))
 
         const nx = m.exp(2n).subtract(X1).subtract(X2)
-        const ny = m.neg().multiply(nx).add(m.multiply(X1)).subtract(Y1)
+        const ny = m.negate().multiply(nx).add(m.multiply(X1)).subtract(Y1)
         return new Point(this.E, nx, ny)
     }
 
@@ -74,13 +75,13 @@ class Point {
         const X = this.x
         const Y = this.y
 
-        const _2 = new Field2(this.E.bn.p, 2)
-        const _3 = new Field2(this.E.bn.p, 3)
+        const _2 = new Fp2(2n, 0n, this.E.bn.fp2Params)
+        const _3 = new Fp2(3n, 0n, this.E.bn.fp2Params)
 
         const m = _3.multiply(X).multiply(X).divide(_2.multiply(Y))
 
         const newx = m.exp(2).subtract(_2.multiply(X))
-        const newy = m.neg().multiply(newx).add(m.multiply(X)).subtract(Y)
+        const newy = m.negate().multiply(newx).add(m.multiply(X)).subtract(Y)
 
         return new Point(this.E, newx, newy)
     }
@@ -122,12 +123,18 @@ class Point {
     }
 
     toF12() {
+        if (this.E.bn !== Bn254Parameters) {
+            throw new Error(
+                'toF12() is only implemented for the default BN254 curve'
+            )
+        }
+
         if (this.eq(this.E.infinity)) {
             return this.E.infinity
         }
 
         const nx = new Field12(this.E.bn, [
-            new Field2(this.E.bn.p, this.x.re, 0, false),
+            new Field2(this.E.bn.p, this.x.a.v, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
@@ -136,7 +143,7 @@ class Point {
         ])
 
         const ny = new Field12(this.E.bn, [
-            new Field2(this.E.bn.p, this.y.re, 0, false),
+            new Field2(this.E.bn.p, this.y.a.v, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
@@ -163,7 +170,7 @@ class Point2 extends Point {
                 this.inf = Q.inf
             }
         } else {
-            if (x instanceof Field2 && y instanceof Field2) {
+            if (x instanceof Fp2 && y instanceof Fp2) {
                 this.E = E
                 this.x = x
                 this.y = y
@@ -195,7 +202,7 @@ class Point2 extends Point {
         const m = Y2.subtract(Y1).divide(X2.subtract(X1))
 
         const nx = m.exp(2).subtract(X1).subtract(X2)
-        const ny = m.neg().multiply(nx).add(m.multiply(X1)).subtract(Y1)
+        const ny = m.negate().multiply(nx).add(m.multiply(X1)).subtract(Y1)
         return new Point2(this.E, nx, ny)
     }
 
@@ -216,18 +223,24 @@ class Point2 extends Point {
         const X = this.x
         const Y = this.y
 
-        const _2 = new Field2(this.E.bn.p, 2)
-        const _3 = new Field2(this.E.bn.p, 3)
+        const _2 = new Fp2(2n, 0n, this.E.bn.fp2Params)
+        const _3 = new Fp2(3n, 0n, this.E.bn.fp2Params)
 
         const m = _3.multiply(X).multiply(X).divide(_2.multiply(Y))
 
         const newx = m.exp(2).subtract(_2.multiply(X))
-        const newy = m.neg().multiply(newx).add(m.multiply(X)).subtract(Y)
+        const newy = m.negate().multiply(newx).add(m.multiply(X)).subtract(Y)
 
         return new Point2(this.E, newx, newy)
     }
 
     toF12() {
+        if (this.E.bn !== Bn254Parameters) {
+            throw new Error(
+                'toF12() is only implemented for the default BN254 curve'
+            )
+        }
+
         if (this.eq(this.E.infinity)) {
             return this.E.infinity
         }
@@ -235,10 +248,10 @@ class Point2 extends Point {
         const _x = this.x
         const _y = this.y
 
-        const xre = new Field2(this.E.bn.p, _x.re)
-        const yre = new Field2(this.E.bn.p, _y.re)
-        const xim = new Field2(this.E.bn.p, _x.im)
-        const yim = new Field2(this.E.bn.p, _y.im)
+        const xre = new Field2(this.E.bn.p, _x.a.v)
+        const yre = new Field2(this.E.bn.p, _y.a.v)
+        const xim = new Field2(this.E.bn.p, _x.b.v)
+        const yim = new Field2(this.E.bn.p, _y.b.v)
 
         const xcoeffs = xre.subtract(xim.multiply(9n))
         const ycoeffs = yre.subtract(yim.multiply(9n))
@@ -256,7 +269,7 @@ class Point2 extends Point {
             new Field2(this.E.bn.p, xcoeffs.re, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
-            new Field2(this.E.bn.p, _x.im, 0, false),
+            new Field2(this.E.bn.p, _x.b.v, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
         ])
@@ -265,7 +278,7 @@ class Point2 extends Point {
             new Field2(this.E.bn.p, ycoeffs.re, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
-            new Field2(this.E.bn.p, _y.im, 0, false),
+            new Field2(this.E.bn.p, _y.b.v, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
             new Field2(this.E.bn.p, 0, 0, false),
         ])

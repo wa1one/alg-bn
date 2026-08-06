@@ -87,43 +87,60 @@ A point on the sextic twist curve over `Fp2`, mirroring `BN128Fp` but with
 
 ### `Curve`, `Curve2`, `Point`, `Point2`, `Point12`
 
-A second, affine-coordinate point representation built on `Field2`/`Field12`
-from `alg-field` rather than `Field`/`Fp2`. Unlike `BN128Fp`/
+A second, affine-coordinate point representation, built on `alg-field`'s
+tunable `Fp2` tower rather than `Field`/`Fp2` directly. Unlike `BN128Fp`/
 `BN128Fp2`, `.eq()` here compares canonical affine coordinates directly, so
 points computed via different code paths (e.g. `.multiply()` vs. repeated
-`.add()`) compare equal without any extra normalization step.
+`.add()`) compare equal without any extra normalization step. This is the
+family to use if you need a curve other than the BN254 default — nothing is
+hardcoded inside `Curve`/`Curve2`; every curve-specific constant (generator,
+`b` coefficient) comes from the params object you pass in.
 
 ```js
-const { Curve } = require('alg-bn')
-const { Parameters } = require('alg-field')
+const { Curve, Curve2, Bls12381Parameters } = require('alg-bn')
 
-const curve = new Curve({ p: Parameters.p })
-const G = curve.G
-curve.contains(G) // true
-G.multiply(3n).eq(G.add(G.double())) // true
+const curve = new Curve() // defaults to BN254 (Bn254Parameters)
+curve.contains(curve.G) // true
+curve.G.multiply(3n).eq(curve.G.add(curve.G.double())) // true
+
+// Any curve with a matching params shape works, e.g. the bundled BLS12-381:
+const blsCurve = new Curve(Bls12381Parameters)
+const blsCurve2 = new Curve2(blsCurve)
+blsCurve2.contains(blsCurve2.Gt) // true
 ```
 
-- `Curve` — the base curve `y² = x³ + 3` over `Fp`. `new Curve(bn)` takes a
-  `bn` object with at least `{ p }` (the field modulus); it exposes `.G` (the
-  generator, a `Point`), `.infinity` (the identity `Point`), and
-  `.contains(P)`.
-- `Curve2` — the sextic twist curve (`extends Curve`). `new Curve2(E)` takes
-  a base `Curve` instance; `E.bn` additionally needs `Fp2_0`, `Fp2_1`, `Fp2_i`
-  (`Field2` instances), and `m` (set `m: 256` to use the hardcoded BN254
-  twist generator — the only path this package exercises, since the generic
-  fallback calls `Field2.sqrt()`, which has an unrelated bug in
-  `alg-field`'s current release). Exposes `.Gt` (the twist
-  generator, a `Point2`) and `.Fp12_1` (the `Field12` multiplicative
-  identity, used to build the `Point12` identity).
-- `Point` — a point on `Curve`, in affine `(x, y)` `Field2` coordinates.
-  `.add()`, `.double()`, `.multiply(n)` (accepts a `bigint` or coercible
-  value), `.neg()`, `.twice(n)`, `.toF12()` (embeds into the `Point12`
-  pairing target group), `.eq()`, `.toString()`.
+- `Bn254Parameters`, `Bls12381Parameters` — ready-made params objects for
+  `Curve`/`Curve2`, each bundling `{ p, n, fp2Params, b, Gx, Gy, G2b, G2x,
+G2y }`: the field modulus and subgroup order, the derived `Fp2` tower
+  params every `Fp2` value on that curve must share, and the base (G1) and
+  twisted (G2) curve coefficients/generators. Named distinctly from
+  `alg-field`'s own `Parameters`/`Bls12381Parameters` (which are field-only,
+  `{ p, n }`) to avoid a collision when both packages are required together.
+  To use a curve that isn't bundled, build an object with this same shape —
+  `fp2Params` comes from `alg-field`'s `deriveFp2Params(p)`.
+- `Curve` — the base curve `y² = x³ + b` over `Fp`. `new Curve(bn =
+Bn254Parameters)` exposes `.G` (the generator, a `Point`), `.infinity` (the
+  identity `Point`), and `.contains(P)`.
+- `Curve2` — the sextic twist curve (`extends Curve`). `new Curve2(E = new
+Curve())` takes a base `Curve` instance and reads its twist coefficient and
+  generator directly from `E.bn.G2b`/`G2x`/`G2y` — no curve-specific branching
+  or derivation happens here. Exposes `.Gt` (the twist generator, a `Point2`)
+  and `.Fp12_1` (the `Field12` multiplicative identity, used to build the
+  `Point12` identity — see the `Point12` caveat below).
+- `Point` — a point on `Curve`, in affine `(x, y)` `Fp2` coordinates (base-
+  curve points use `im = 0`). `.add()`, `.double()`, `.multiply(n)` (accepts
+  a `bigint` or coercible value), `.neg()`, `.twice(n)`, `.eq()`,
+  `.toString()`.
 - `Point2` — a point on `Curve2` (`extends Point`); the 3-argument
   constructor validates curve membership via `Curve2.contains()` and throws
   `pointNotOnCurve` otherwise.
-- `Point12` — a point over `Fp12` (`extends Point2`), in `Field12`
-  coordinates.
+- `Point12`, `.toF12()` (on `Point`/`Point2`) — **BN254-only.** The Fp12
+  pairing-target embedding uses a sextic-twist untwist formula specific to
+  BN254's `Field12` representation; `alg-bn` has no complete Miller-loop
+  pairing implementation for any curve today, so this is just a building
+  block, not a generally curve-parameterized piece. Calling `.toF12()` on a
+  point from a non-BN254 curve (e.g. `Bls12381Parameters`) throws rather than
+  returning silently-wrong results.
 
 ## Development
 
