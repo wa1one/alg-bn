@@ -1,6 +1,6 @@
 {
     "name": "alg-bn",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "description": "",
     "main": "dist/index.js",
     "publishConfig": {
@@ -37,7 +37,7 @@
     },
     "homepage": "https://github.com/wa1one/alg-bn#readme",
     "dependencies": {
-        "alg-field": "^0.2.3"
+        "alg-field": "^0.2.4"
     },
     "devDependencies": {
         "@babel/core": "^7.12.1",
