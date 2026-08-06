@@ -240,6 +240,13 @@ describe('Curve / Point', () => {
         const infinity12 = curve.infinity.toF12()
         expect(infinity12).toBe(curve.infinity)
     })
+
+    test('pointFactory() produces distinct valid points on this curve instance', () => {
+        const p1 = curve.pointFactory()
+        const p2 = curve.pointFactory()
+        expect(curve.contains(p1)).toBeTruthy()
+        expect(p1.eq(p2)).toBeFalsy()
+    })
 })
 
 describe('Curve2 / Point2', () => {
@@ -287,6 +294,13 @@ describe('Curve2 / Point2', () => {
         const Gt12 = Gt.toF12()
         expect(Gt12).toBeInstanceOf(Point12)
         expect(curve2.contains(Gt12)).toBeTruthy()
+    })
+
+    test('pointFactory() produces distinct valid points on this curve instance', () => {
+        const p1 = curve2.pointFactory()
+        const p2 = curve2.pointFactory()
+        expect(curve2.contains(p1)).toBeTruthy()
+        expect(p1.eq(p2)).toBeFalsy()
     })
 })
 

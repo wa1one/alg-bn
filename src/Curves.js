@@ -46,8 +46,10 @@ class Curve {
         this.G = new Point(this, bn.Gx, bn.Gy)
     }
 
-    static pointFactory = () =>
-        this.G.multiply(randomBigInt(2n ** 2n * this.bn.p.bitLength()))
+    pointFactory = () =>
+        this.G.multiply(
+            randomBigInt(2n ** (2n * BigInt(this.bn.p.bitLength())))
+        )
 
     contains(P) {
         if (P.E !== this) {
@@ -92,8 +94,10 @@ class Curve2 extends Curve {
         }
     }
 
-    static pointFactory = () =>
-        this.Gt.multiply(randomBigInt(2n ** 2n * this.bn.p.bitLength()))
+    pointFactory = () =>
+        this.Gt.multiply(
+            randomBigInt(2n ** (2n * BigInt(this.bn.p.bitLength())))
+        )
 }
 
 module.exports = { Curve, Curve2 }

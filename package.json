@@ -12,6 +12,11 @@
         "build": "webpack --mode=production",
         "prepublishOnly": "npm run lint && npm test && npm run build"
     },
+    "jest": {
+        "setupFiles": [
+            "./jest.setup.js"
+        ]
+    },
     "files": [
         "dist"
     ],
