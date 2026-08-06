@@ -1,8 +1,42 @@
-const bigintCryptoUtils = require('bigint-crypto-utils')
 const { Field2, Field12 } = require('alg-field')
 const { Bn254Parameters } = require('./curveParameters')
 
 const { Point, Point2 } = require('./Points')
+
+// Cryptographically secure random bigint in [min, max] (inclusive), via rejection sampling on
+// a bit-length-matched buffer - the same approach, and the same [min, max] contract, as the
+// bigint-crypto-utils dependency this replaces (its randBetween(max, min = 1n) used
+// self.crypto.getRandomValues() internally too). Relies on the Web Crypto API
+// (globalThis.crypto.getRandomValues), available in all modern browsers and Node 19+ - no
+// Node-only `crypto` module dependency, so it works unchanged in both the node and web builds
+// (see webpack.config.js).
+function randomBigInt(max, min = 1n) {
+    if (max <= min) {
+        throw new RangeError('Arguments MUST be: max > min')
+    }
+
+    const interval = max - min
+    const bitLen = interval.bitLength()
+    const byteLen = Math.ceil(bitLen / 8)
+    const excessBits = byteLen * 8 - bitLen
+
+    let rnd
+    do {
+        const bytes = new Uint8Array(byteLen)
+        globalThis.crypto.getRandomValues(bytes)
+
+        if (excessBits > 0) {
+            bytes[0] &= 0xff >> excessBits
+        }
+
+        rnd = 0n
+        for (const byte of bytes) {
+            rnd = (rnd << 8n) | BigInt(byte)
+        }
+    } while (rnd > interval)
+
+    return rnd + min
+}
 
 class Curve {
     constructor(bn = Bn254Parameters) {
@@ -13,9 +47,7 @@ class Curve {
     }
 
     static pointFactory = () =>
-        this.G.multiply(
-            bigintCryptoUtils.randBetween(2n ** 2n * this.bn.p.bitLength())
-        )
+        this.G.multiply(randomBigInt(2n ** 2n * this.bn.p.bitLength()))
 
     contains(P) {
         if (P.E !== this) {
@@ -61,9 +93,7 @@ class Curve2 extends Curve {
     }
 
     static pointFactory = () =>
-        this.Gt.multiply(
-            bigintCryptoUtils.randBetween(2n ** 2n * this.bn.p.bitLength())
-        )
+        this.Gt.multiply(randomBigInt(2n ** 2n * this.bn.p.bitLength()))
 }
 
 module.exports = { Curve, Curve2 }

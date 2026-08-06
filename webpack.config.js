@@ -10,9 +10,7 @@ module.exports = [
             libraryTarget: 'umd',
         },
 
-        externals: {
-            'bigint-crypto-utils': 'bigint-crypto-utils',
-        },
+        externals: {},
         module: {
             rules: [
                 {
