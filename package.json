@@ -37,7 +37,7 @@
     },
     "homepage": "https://github.com/wa1one/alg-bn#readme",
     "dependencies": {
-        "alg-field": "^0.2.4"
+        "alg-field": "^0.3.0"
     },
     "devDependencies": {
         "@babel/core": "^7.12.1",

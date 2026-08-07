@@ -1,5 +1,4 @@
 const { Fp2, Field2, Field12 } = require('alg-field')
-const { Bn254Parameters } = require('./curveParameters')
 
 class Point {
     constructor(E, x, y) {
@@ -123,12 +122,6 @@ class Point {
     }
 
     toF12() {
-        if (this.E.bn !== Bn254Parameters) {
-            throw new Error(
-                'toF12() is only implemented for the default BN254 curve'
-            )
-        }
-
         if (this.eq(this.E.infinity)) {
             return this.E.infinity
         }
@@ -235,9 +228,9 @@ class Point2 extends Point {
     }
 
     toF12() {
-        if (this.E.bn !== Bn254Parameters) {
+        if (this.E.bn.xiRe === undefined || this.E.bn.twistType === undefined) {
             throw new Error(
-                'toF12() is only implemented for the default BN254 curve'
+                "toF12() needs bn.xiRe (the real part of the curve's Fp6 sextic non-residue, xiRe + u) and bn.twistType ('D' or 'M') to untwist a G2 point into Fp12"
             )
         }
 
@@ -247,14 +240,15 @@ class Point2 extends Point {
 
         const _x = this.x
         const _y = this.y
+        const xiRe = new Field2(this.E.bn.p, this.E.bn.xiRe)
 
         const xre = new Field2(this.E.bn.p, _x.a.v)
         const yre = new Field2(this.E.bn.p, _y.a.v)
         const xim = new Field2(this.E.bn.p, _x.b.v)
         const yim = new Field2(this.E.bn.p, _y.b.v)
 
-        const xcoeffs = xre.subtract(xim.multiply(9n))
-        const ycoeffs = yre.subtract(yim.multiply(9n))
+        const xcoeffs = xre.subtract(xim.multiply(xiRe))
+        const ycoeffs = yre.subtract(yim.multiply(xiRe))
 
         const w = new Field12(this.E.bn, [
             new Field2(this.E.bn.p, 0, BigInt(1), false),
@@ -283,8 +277,19 @@ class Point2 extends Point {
             new Field2(this.E.bn.p, 0, 0, false),
         ])
 
-        nx = nx.multiply(w).multiply(w)
-        ny = ny.multiply(w).multiply(w).multiply(w)
+        // D-twist (G2b = b / xi, e.g. BN254): untwist by multiplying by w^2/w^3.
+        // M-twist (G2b = b * xi, e.g. BLS12-381): untwist by dividing by w^2/w^3 instead.
+        if (this.E.bn.twistType === 'D') {
+            nx = nx.multiply(w).multiply(w)
+            ny = ny.multiply(w).multiply(w).multiply(w)
+        } else if (this.E.bn.twistType === 'M') {
+            nx = nx.divide(w).divide(w)
+            ny = ny.divide(w).divide(w).divide(w)
+        } else {
+            throw new Error(
+                `toF12() does not know how to untwist bn.twistType ${JSON.stringify(this.E.bn.twistType)} - expected 'D' or 'M'`
+            )
+        }
 
         return new Point12(this.E, nx, ny)
     }

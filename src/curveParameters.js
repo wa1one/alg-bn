@@ -6,9 +6,19 @@ const {
 } = require('alg-field')
 
 // Curve-parameter bundles for Curve/Curve2 (src/Curves.js): the field modulus and subgroup
-// order, the derived Fp2 tower params every Fp2 value on this curve must share, and the base
-// (G1) and twisted (G2) curve coefficients/generators as Fp2 (G1 coordinates use im = 0,
-// matching how Point/Point2 represent both groups uniformly).
+// order, the derived Fp2 tower params every Fp2 value on this curve must share, the base (G1)
+// and twisted (G2) curve coefficients/generators as Fp2 (G1 coordinates use im = 0, matching how
+// Point/Point2 represent both groups uniformly), xiRe - the real part of the curve's Fp6 sextic
+// non-residue (xi = xiRe + u for both curves here), and twistType - needed together by
+// Point2.toF12() to untwist a G2 point into Fp12. alg-field's Field12 (>=0.3.0) derives its
+// degree-12 modulus polynomial from bn.p automatically, so Point/Point2's toF12() work for any
+// curve with a matching params shape - not just BN254.
+//
+// twistType matters because it fixes the relationship between the twisted curve's own
+// coefficient (G2b) and the base curve's b: BN254 uses a D-twist (G2b = b / xi), BLS12-381 uses
+// an M-twist (G2b = b * xi) - this is a real, curve-family-level convention difference, not a
+// free choice, and the untwist map in toF12() must go the opposite direction (divide vs
+// multiply by powers of the twist generator w) to match whichever one G2b was built with.
 //
 // Named distinctly from alg-field's own Parameters/Bls12381Parameters (which are field-only,
 // {p, n}) to avoid a naming collision when both packages are required together.
@@ -22,6 +32,8 @@ function buildBn254Parameters() {
         p,
         n,
         fp2Params,
+        xiRe: 9n,
+        twistType: 'D',
         b: new Fp2(3n, 0n, fp2Params),
         Gx: new Fp2(1n, 0n, fp2Params),
         Gy: new Fp2(2n, 0n, fp2Params),
@@ -48,6 +60,8 @@ function buildBls12381Parameters() {
         p,
         n,
         fp2Params,
+        xiRe: 1n,
+        twistType: 'M',
         b: new Fp2(4n, 0n, fp2Params),
         Gx: new Fp2(
             3685416753713387016781088315183077757961620795782546409894578378688607592378376318836054947676345821548104185464507n,

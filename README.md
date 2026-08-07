@@ -110,10 +110,12 @@ blsCurve2.contains(blsCurve2.Gt) // true
 ```
 
 - `Bn254Parameters`, `Bls12381Parameters` — ready-made params objects for
-  `Curve`/`Curve2`, each bundling `{ p, n, fp2Params, b, Gx, Gy, G2b, G2x,
-G2y }`: the field modulus and subgroup order, the derived `Fp2` tower
-  params every `Fp2` value on that curve must share, and the base (G1) and
-  twisted (G2) curve coefficients/generators. Named distinctly from
+  `Curve`/`Curve2`, each bundling `{ p, n, fp2Params, xiRe, twistType, b, Gx,
+Gy, G2b, G2x, G2y }`: the field modulus and subgroup order, the derived
+  `Fp2` tower params every `Fp2` value on that curve must share, the real
+  part of the curve's Fp6 sextic non-residue and its twist type (`'D'` for
+  BN254, `'M'` for BLS12-381 — see the `Point12` note below), and the base
+  (G1) and twisted (G2) curve coefficients/generators. Named distinctly from
   `alg-field`'s own `Parameters`/`Bls12381Parameters` (which are field-only,
   `{ p, n }`) to avoid a collision when both packages are required together.
   To use a curve that isn't bundled, build an object with this same shape —
@@ -126,7 +128,7 @@ Curve())` takes a base `Curve` instance and reads its twist coefficient and
   generator directly from `E.bn.G2b`/`G2x`/`G2y` — no curve-specific branching
   or derivation happens here. Exposes `.Gt` (the twist generator, a `Point2`)
   and `.Fp12_1` (the `Field12` multiplicative identity, used to build the
-  `Point12` identity — see the `Point12` caveat below).
+  `Point12` identity).
 - `Point` — a point on `Curve`, in affine `(x, y)` `Fp2` coordinates (base-
   curve points use `im = 0`). `.add()`, `.double()`, `.multiply(n)` (accepts
   a `bigint` or coercible value), `.neg()`, `.twice(n)`, `.eq()`,
@@ -134,13 +136,18 @@ Curve())` takes a base `Curve` instance and reads its twist coefficient and
 - `Point2` — a point on `Curve2` (`extends Point`); the 3-argument
   constructor validates curve membership via `Curve2.contains()` and throws
   `pointNotOnCurve` otherwise.
-- `Point12`, `.toF12()` (on `Point`/`Point2`) — **BN254-only.** The Fp12
-  pairing-target embedding uses a sextic-twist untwist formula specific to
-  BN254's `Field12` representation; `alg-bn` has no complete Miller-loop
-  pairing implementation for any curve today, so this is just a building
-  block, not a generally curve-parameterized piece. Calling `.toF12()` on a
-  point from a non-BN254 curve (e.g. `Bls12381Parameters`) throws rather than
-  returning silently-wrong results.
+- `Point12`, `.toF12()` (on `Point`/`Point2`) — embeds a G1 or G2 point into
+  the `Fp12` pairing target group, in `Field12` coordinates. Works for any
+  curve whose params object supplies `xiRe`/`twistType` (both bundled
+  parameters do) — `alg-field`'s `Field12` (`>= 0.3.0`) derives its degree-12
+  modulus polynomial from `bn.p` automatically, and `Point2.toF12()`'s
+  untwist map branches on `twistType` to match whichever convention that
+  curve's `G2b` was built with (`G2b = b / xi` for a D-twist, `G2b = b * xi`
+  for an M-twist — these aren't a free choice, they're a real per-curve-family
+  convention, so a curve you add yourself needs to get this right for its own
+  `G2b`). `alg-bn` still has no complete Miller-loop pairing implementation
+  for any curve — `toF12()`/`Point12` are the embedding building block, not a
+  full pairing.
 
 ## Development
 

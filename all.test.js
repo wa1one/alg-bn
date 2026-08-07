@@ -296,6 +296,15 @@ describe('Curve2 / Point2', () => {
         expect(curve2.contains(Gt12)).toBeTruthy()
     })
 
+    test('toF12() rejects an unrecognized twistType', () => {
+        const badCurve2 = new Curve2(
+            new Curve({ ...Bn254Parameters, twistType: 'X' })
+        )
+        expect(() => badCurve2.Gt.toF12()).toThrow(
+            'does not know how to untwist bn.twistType "X"'
+        )
+    })
+
     test('pointFactory() produces distinct valid points on this curve instance', () => {
         const p1 = curve2.pointFactory()
         const p2 = curve2.pointFactory()
@@ -370,12 +379,16 @@ describe('BLS12-381', () => {
         expect(Gt.add(curve2.infinity).eq(Gt)).toBeTruthy()
     })
 
-    test('toF12() refuses to run against a non-BN254 curve', () => {
-        expect(() => G.toF12()).toThrow(
-            'toF12() is only implemented for the default BN254 curve'
-        )
-        expect(() => Gt.toF12()).toThrow(
-            'toF12() is only implemented for the default BN254 curve'
-        )
+    test('toF12() embeds points into the Fp12 pairing target group (M-twist)', () => {
+        const G12 = G.toF12()
+        expect(G12).toBeInstanceOf(Point12)
+        expect(curve.contains(G12)).toBeTruthy()
+        expect(G12.add(G12).eq(G12.double())).toBeTruthy()
+
+        const Gt12 = Gt.toF12()
+        expect(Gt12).toBeInstanceOf(Point12)
+        expect(curve2.contains(Gt12)).toBeTruthy()
+        expect(Gt12.add(Gt12).eq(Gt12.double())).toBeTruthy()
+        expect(Gt12.multiply(3n).eq(Gt12.add(Gt12.double()))).toBeTruthy()
     })
 })

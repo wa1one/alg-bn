@@ -59,11 +59,9 @@ class Curve {
         const x = P.x
         const y = P.y
 
-        // Point12 stays BN254-specific (see Points.js); this membership check for it is
-        // unaffected by the curve-parameterization below.
         if (x instanceof Field12 && y instanceof Field12) {
             const b = new Field12(this.bn, [
-                new Field2(this.bn.p, 3, 0, false),
+                new Field2(this.bn.p, this.bn.b.a.v, 0, false),
                 new Field2(this.bn.p, 0, 0, false),
                 new Field2(this.bn.p, 0, 0, false),
                 new Field2(this.bn.p, 0, 0, false),
