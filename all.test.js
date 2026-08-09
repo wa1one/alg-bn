@@ -1,8 +1,17 @@
 const { BN128Fp, BN128Fp2 } = require('./src')
 const { Curve, Curve2 } = require('./src/Curves')
 const { Point, Point2, Point12 } = require('./src/Points')
+const { JacobianPoint, JacobianPoint2 } = require('./src/JacobianPoints')
 const { Bn254Parameters, Bls12381Parameters } = require('./src/curveParameters')
 const { Field, Fp2 } = require('alg-field')
+
+function randomBigIntForTest(bits) {
+    let r = 0n
+    for (let i = 0; i < bits; i++) {
+        r = (r << 1n) | BigInt(Math.random() < 0.5 ? 0 : 1)
+    }
+    return r
+}
 
 const G2_COORDS = [
     10857046999023057135944570762232829481370756359578518086990519993285655852781n,
@@ -390,5 +399,103 @@ describe('BLS12-381', () => {
         expect(curve2.contains(Gt12)).toBeTruthy()
         expect(Gt12.add(Gt12).eq(Gt12.double())).toBeTruthy()
         expect(Gt12.multiply(3n).eq(Gt12.add(Gt12.double()))).toBeTruthy()
+    })
+})
+
+describe('JacobianPoint / JacobianPoint2', () => {
+    const curve = new Curve()
+    const curve2 = new Curve2(curve)
+    const JG = JacobianPoint.fromAffine(curve, curve.G)
+    const JGt = JacobianPoint2.fromAffine(curve2, curve2.Gt)
+
+    test('fromAffine()/toAffine() round-trips the generator', () => {
+        expect(JG.toAffine().eq(curve.G)).toBeTruthy()
+        expect(JGt.toAffine().eq(curve2.Gt)).toBeTruthy()
+    })
+
+    test('the point at infinity round-trips and is zero()', () => {
+        expect(new JacobianPoint(curve).zero()).toBeTruthy()
+        expect(new JacobianPoint(curve).toAffine().eq(curve.infinity)).toBeTruthy()
+        expect(new JacobianPoint2(curve2).zero()).toBeTruthy()
+        expect(new JacobianPoint2(curve2).toAffine().eq(curve2.infinity)).toBeTruthy()
+    })
+
+    test('double()/twice() agree with the affine Point/Point2 implementation', () => {
+        expect(JG.double().toAffine().eq(curve.G.double())).toBeTruthy()
+        expect(JG.twice(3).toAffine().eq(curve.G.twice(3))).toBeTruthy()
+        expect(JGt.double().toAffine().eq(curve2.Gt.double())).toBeTruthy()
+        expect(JGt.twice(3).toAffine().eq(curve2.Gt.twice(3))).toBeTruthy()
+    })
+
+    test('add() agrees with the affine implementation, including doubling and infinity results', () => {
+        const J3 = JG.multiply(3n)
+        expect(JG.add(J3).toAffine().eq(curve.G.add(curve.G.multiply(3n)))).toBeTruthy()
+        expect(JG.add(JG).toAffine().eq(curve.G.add(curve.G))).toBeTruthy() // same-point add == double
+        expect(JG.add(JG.neg()).zero()).toBeTruthy() // P + (-P) = infinity
+
+        const J3t = JGt.multiply(3n)
+        expect(
+            JGt.add(J3t).toAffine().eq(curve2.Gt.add(curve2.Gt.multiply(3n)))
+        ).toBeTruthy()
+        expect(JGt.add(JGt.neg()).zero()).toBeTruthy()
+    })
+
+    test('multiply() agrees with repeated addition and with Point/Point2.multiply() across random scalars', () => {
+        expect(JG.multiply(0n).zero()).toBeTruthy()
+        expect(JG.multiply(1n).toAffine().eq(curve.G)).toBeTruthy()
+        expect(JG.multiply(2n).toAffine().eq(curve.G.double())).toBeTruthy()
+
+        for (let i = 0; i < 15; i++) {
+            const k = randomBigIntForTest(200)
+            expect(JG.multiply(k).toAffine().eq(curve.G.multiply(k))).toBeTruthy()
+            expect(JGt.multiply(k).toAffine().eq(curve2.Gt.multiply(k))).toBeTruthy()
+        }
+    })
+
+    test('multiply() with a negative scalar matches negating first', () => {
+        const k = 12345n
+        expect(JG.multiply(-k).eq(JG.multiply(k).neg())).toBeTruthy()
+    })
+
+    test('satisfies the group axioms (associativity, commutativity, identity)', () => {
+        const A = JG.multiply(3n)
+        const B = JG.multiply(5n)
+        const C = JG.multiply(7n)
+        expect(A.add(B).add(C).eq(A.add(B.add(C)))).toBeTruthy()
+        expect(A.add(B).eq(B.add(A))).toBeTruthy()
+        expect(A.add(new JacobianPoint(curve)).eq(A)).toBeTruthy()
+    })
+
+    test('JacobianPoint2 rejects off-curve coordinates the same way Point2 does', () => {
+        expect(
+            () =>
+                new JacobianPoint2(
+                    curve2,
+                    new Fp2(1n, 0n, Bn254Parameters.fp2Params),
+                    new Fp2(1n, 0n, Bn254Parameters.fp2Params)
+                )
+        ).toThrow('pointNotOnCurve')
+    })
+
+    test('toString()/toF12() delegate to the affine representation', () => {
+        expect(JG.toString()).toBe(curve.G.toString())
+        expect(JG.toF12().eq(curve.G.toF12())).toBeTruthy()
+    })
+
+    test('works for a second curve (BLS12-381), not just the BN254 default', () => {
+        const blsCurve = new Curve(Bls12381Parameters)
+        const blsCurve2 = new Curve2(blsCurve)
+        const JBG = JacobianPoint.fromAffine(blsCurve, blsCurve.G)
+        const JBGt = JacobianPoint2.fromAffine(blsCurve2, blsCurve2.Gt)
+
+        for (let i = 0; i < 10; i++) {
+            const k = randomBigIntForTest(180)
+            expect(
+                JBG.multiply(k).toAffine().eq(blsCurve.G.multiply(k))
+            ).toBeTruthy()
+            expect(
+                JBGt.multiply(k).toAffine().eq(blsCurve2.Gt.multiply(k))
+            ).toBeTruthy()
+        }
     })
 })

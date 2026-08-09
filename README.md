@@ -149,6 +149,50 @@ Curve())` takes a base `Curve` instance and reads its twist coefficient and
   for any curve — `toF12()`/`Point12` are the embedding building block, not a
   full pairing.
 
+### `JacobianPoint`, `JacobianPoint2`
+
+Same curve/params contract as `Point`/`Point2` (built on the same `Curve`/
+`Curve2` instances, same tunable `bn` shape), but in Jacobian `(x, y, z)`
+coordinates instead of affine. `Point`/`Point2` pay a full field inversion
+(`.divide()`) on every single `.add()`/`.double()`; Jacobian coordinates
+need none until you actually want the affine `x`/`y` back (`.toAffine()`),
+so `.multiply()` does its doublings/additions inversion-free and normalizes
+once at the end. Note: on `alg-field`'s native-`BigInt`-backed fields, this
+is a smaller win than the classical "inversion costs 10-100x a
+multiplication" rule of thumb suggests — V8's `BigInt` modular inverse is
+close to multiplication cost at these prime sizes, so `.multiply()` here is
+roughly on par with `Point.multiply()` for BN254-sized primes and only
+modestly faster for larger ones (BLS12-381 in informal local benchmarks).
+Add it where you specifically want to avoid per-operation inversions (e.g.
+a much larger custom prime) rather than as a default performance upgrade.
+
+```js
+const { Curve, JacobianPoint } = require('alg-bn')
+
+const curve = new Curve()
+const JG = JacobianPoint.fromAffine(curve, curve.G)
+JG.multiply(12345n).toAffine().eq(curve.G.multiply(12345n)) // true
+```
+
+- `new JacobianPoint(E, x, y, z)` — `x`/`y` (both `Fp2`) with `z` omitted
+  default to `z = 1`; all of `x`/`y`/`z` omitted builds the point at
+  infinity. No on-curve validation (matching `Point`'s 4-argument form) —
+  use `JacobianPoint.fromAffine` or `Curve.contains(P.toAffine())` if you
+  need it.
+- `JacobianPoint.fromAffine(E, P)` — builds a `JacobianPoint` from an
+  existing (already-validated) `Point`.
+- `.toAffine()` — normalizes to `z = 1` and returns a `Point`.
+- `.add()`, `.double()`, `.twice(n)`, `.multiply(n)`, `.neg()`, `.eq()`
+  (compares canonical Jacobian coordinates directly — like `Point`, not
+  `BN128Fp`, no normalization needed first), `.zero()`, `.toString()`,
+  `.toF12()` (both delegate to `.toAffine()`).
+- `JacobianPoint2` — the `Curve2` counterpart (`extends JacobianPoint`).
+  `new JacobianPoint2(E, x, y)` (`z` omitted, i.e. a fresh affine-equivalent
+  point) validates via `Curve2.contains()` and throws `pointNotOnCurve`,
+  matching `Point2`; the 4-argument `(E, x, y, z)` form used internally by
+  `.add()`/`.twice()` does not re-validate every intermediate value.
+  `JacobianPoint2.fromAffine(E, P)` mirrors `JacobianPoint.fromAffine`.
+
 ## Development
 
 ### To run tests
