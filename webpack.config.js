@@ -10,7 +10,21 @@ module.exports = [
             libraryTarget: 'umd',
         },
 
-        externals: {},
+        // alg-field must NOT be bundled here: this is the Node build, and
+        // consumers require() both alg-bn and alg-field directly (alg-bn's
+        // own Curve/Point/JacobianPoint take alg-field Fp2/Field12 values
+        // as arguments). Bundling a private copy means the classes those
+        // consumers construct via their own `require('alg-field')` are a
+        // *different* Fp2/Field12 than the one alg-bn's bundled copy uses
+        // internally -- structurally identical data, but `instanceof`
+        // (which alg-field's own add/multiply/etc rely on to recognize
+        // same-level operands) fails between the two, throwing "Incorrect
+        // type argument" on essentially every operation. `externals` keeps
+        // this build's `require('alg-field')` resolving to the caller's own
+        // installed copy instead of a second, bundled one.
+        externals: {
+            'alg-field': 'commonjs alg-field',
+        },
         module: {
             rules: [
                 {

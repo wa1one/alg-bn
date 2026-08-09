@@ -1,6 +1,6 @@
 {
     "name": "alg-bn",
-    "version": "0.4.0",
+    "version": "0.4.1",
     "description": "",
     "main": "dist/index.js",
     "publishConfig": {
@@ -10,7 +10,8 @@
         "test": "jest",
         "lint": "eslint .",
         "build": "webpack --mode=production",
-        "prepublishOnly": "npm run lint && npm test && npm run build"
+        "test:dist": "jest dist.test.js",
+        "prepublishOnly": "npm run lint && npm test && npm run build && npm run test:dist"
     },
     "jest": {
         "setupFiles": [
